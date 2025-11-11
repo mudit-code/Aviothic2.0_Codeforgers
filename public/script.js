@@ -26,19 +26,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelUploadModal = document.getElementById("cancelUploadModal");
     const confirmCancelBtn = document.getElementById("confirmCancelBtn");
     const denyCancelBtn = document.getElementById("denyCancelBtn");
+    const previewModal = document.getElementById("previewModal");
+    const previewContent = document.getElementById("previewContent");
+    const closePreview = document.getElementById("closePreview");
 
     // State
     let roomKey, username, isAdmin = false;
     let pendingJoinRequest = null;
     let uploadToCancel = null;
     const fileUploads = {};
-
     let emojis = [];
+    let fileToSend = null;
 
     // Functions
     function showChatScreen() {
         joinScreen.style.display = "none";
         chatScreen.style.display = "flex";
+        document.body.classList.add("chat-active");
     }
 
     function displaySystemMessage(message) {
@@ -66,7 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (message.type === 'text') {
             messageBubble.innerHTML = `<span class="font-bold">${user}:</span> ${message.content}`;
         } else if (message.type === 'gif') {
-            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><img src="${message.content}" class="mt-2 rounded-lg">`;
+            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><img src="${message.content}" class="mt-2 rounded-lg message-file-preview">`;
+        } else if (message.type === 'image') {
+            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><img src="${message.content}" class="mt-2 rounded-lg message-file-preview">`;
+        } else if (message.type === 'video') {
+            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><video src="${message.content}" class="mt-2 rounded-lg message-file-preview" controls></video>`;
         }
 
         div.appendChild(messageBubble);
@@ -153,35 +161,43 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayFile(user, file, messageId) {
         const messageDiv = document.getElementById(messageId);
         const bubbleClass = user === username ? 'bg-blue-500 text-white' : 'bg-gray-700';
-        const truncatedName = file.name.length > 15 ? file.name.substring(0, 10) + "..." + file.name.substring(file.name.length - 5) : file.name;
         const fileType = getMimeType(file);
-        const fileTypeSuffix = fileType.split('/')[1] ? fileType.split('/')[1].toUpperCase() + ' File' : 'File';
 
-        const fileHtml = `
-        <div class="flex items-center">
-            <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-600 mr-4">
-                ${getFileIcon(file)}
+        let fileHtml;
+
+        if (fileType.startsWith('image')) {
+            fileHtml = `<img src="${file.path}" class="mt-2 rounded-lg message-file-preview">`;
+        } else if (fileType.startsWith('video')) {
+            fileHtml = `<video src="${file.path}" class="mt-2 rounded-lg message-file-preview" controls></video>`;
+        } else {
+            const truncatedName = file.name.length > 15 ? file.name.substring(0, 10) + "..." + file.name.substring(file.name.length - 5) : file.name;
+            const fileTypeSuffix = fileType.split('/')[1] ? fileType.split('/')[1].toUpperCase() + ' File' : 'File';
+            fileHtml = `
+            <div class="flex items-center">
+                <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-600 mr-4">
+                    ${getFileIcon(file)}
+                </div>
+                <div class="overflow-hidden">
+                    <div class="font-medium truncate">${truncatedName}</div>
+                    <div class="text-sm text-gray-300">${formatBytes(file.size)} - ${fileTypeSuffix}</div>
+                </div>
             </div>
-            <div class="overflow-hidden">
-                <div class="font-medium truncate">${truncatedName}</div>
-                <div class="text-sm text-gray-300">${formatBytes(file.size)} - ${fileTypeSuffix}</div>
+            <div class="flex gap-2 mt-3">
+                <a href="${file.path}" target="_blank" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm">Open</a>
+                <a href="${file.path}" download="${file.name}" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm">Save As</a>
             </div>
-        </div>
-        <div class="flex gap-2 mt-3">
-            <a href="${file.path}" target="_blank" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm">Open</a>
-            <a href="${file.path}" download="${file.name}" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm">Save As</a>
-        </div>
-    `;
+        `;
+        }
 
         if (messageDiv) {
             const bubble = messageDiv.querySelector(".p-3");
             bubble.innerHTML = fileHtml;
-            bubble.style.width = '320px';
+            bubble.style.width = fileType.startsWith('image') || fileType.startsWith('video') ? 'auto' : '320px';
         } else {
             const div = document.createElement("div");
             div.id = messageId;
             div.className = `message mb-4 flex ${user === username ? 'justify-end' : 'justify-start'}`;
-            div.innerHTML = `<div class="p-3 rounded-lg max-w-xs ${bubbleClass}" style="width: 320px;">${fileHtml}</div>`;
+            div.innerHTML = `<div class="p-3 rounded-lg max-w-xs ${bubbleClass}" style="width: ${fileType.startsWith('image') || fileType.startsWith('video') ? 'auto' : '320px'};">${fileHtml}</div>`;
             messagesDiv.appendChild(div);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
@@ -206,70 +222,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Event Listeners
-    createRoomBtn.onclick = () => {
-        roomKey = roomKeyInput.value.trim();
-        username = usernameInput.value.trim();
-        if (!roomKey || !username) return alert("Please enter a username and a room key.");
-        socket.emit("create-room", {
-            roomKey,
-            username
-        });
-    };
+    function uploadFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.classList.add('pasted-image-preview');
+            messageInput.appendChild(img);
+            fileToSend = file;
+        };
+        reader.readAsDataURL(file);
+    }
 
-    joinRoomBtn.onclick = () => {
-        roomKey = roomKeyInput.value.trim();
-        username = usernameInput.value.trim();
-        if (!roomKey || !username) return alert("Please enter a username and a room key.");
-        socket.emit("join-room", {
-            roomKey,
-            username
-        });
-    };
-
-    leaveBtn.onclick = () => {
-        socket.emit("leave-room", {
-            roomKey,
-            username
-        });
-        chatScreen.style.display = "none";
-        joinScreen.style.display = "flex";
-        messagesDiv.innerHTML = "";
-        roomKeyInput.value = "";
-        isAdmin = false;
-    };
-
-    killRoomBtn.onclick = () => {
-        if (isAdmin) {
-            socket.emit("kill-room", {
-                roomKey
-            });
-        }
-    };
-
-    messageInput.addEventListener("keydown", (e) => e.key === "Enter" && sendBtn.click());
-    messageInput.addEventListener("focus", () => {
-        mediaPicker.style.display = "none";
-    });
-
-    sendBtn.onclick = () => {
-        const message = messageInput.value.trim();
-        if (message === "") return;
-        socket.emit("chat-message", {
-            roomKey,
-            username,
-            message: {
-                type: 'text',
-                content: message
-            }
-        });
-        messageInput.value = "";
-    };
-
-    fileInput.onchange = () => {
-        const file = fileInput.files[0];
-        if (!file) return;
-
+    function sendFile(file) {
         const messageId = `file-${Date.now()}`;
         const div = document.createElement("div");
         div.className = "message mb-4 flex justify-end";
@@ -334,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         type: file.type,
                         path
                     };
-                    displayFile(username, fileData, messageId); // Immediately update UI for sender
+                    displayFile(username, fileData, messageId);
                     socket.emit("file-uploaded", {
                         roomKey,
                         username,
@@ -350,6 +315,97 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         xhr.send(formData);
+    }
+
+    // Event Listeners
+    createRoomBtn.onclick = () => {
+        roomKey = roomKeyInput.value.trim();
+        username = usernameInput.value.trim();
+        if (!roomKey || !username) return alert("Please enter a username and a room key.");
+        socket.emit("create-room", {
+            roomKey,
+            username
+        });
+    };
+
+    joinRoomBtn.onclick = () => {
+        roomKey = roomKeyInput.value.trim();
+        username = usernameInput.value.trim();
+        if (!roomKey || !username) return alert("Please enter a username and a room key.");
+        socket.emit("join-room", {
+            roomKey,
+            username
+        });
+    };
+
+    leaveBtn.onclick = () => {
+        socket.emit("leave-room", {
+            roomKey,
+            username
+        });
+        chatScreen.style.display = "none";
+        joinScreen.style.display = "flex";
+        messagesDiv.innerHTML = "";
+        roomKeyInput.value = "";
+        isAdmin = false;
+        document.body.classList.remove("chat-active");
+    };
+
+    killRoomBtn.onclick = () => {
+        if (isAdmin) {
+            socket.emit("kill-room", {
+                roomKey
+            });
+        }
+    };
+
+    messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendBtn.click();
+        }
+    });
+    
+    messageInput.addEventListener("focus", () => {
+        mediaPicker.style.display = "none";
+    });
+
+    messageInput.addEventListener('paste', (event) => {
+        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+        for (const item of items) {
+            if (item.kind === 'file') {
+                const file = item.getAsFile();
+                uploadFile(file);
+                event.preventDefault();
+            }
+        }
+    });
+
+    sendBtn.onclick = () => {
+        if (fileToSend) {
+            sendFile(fileToSend);
+            fileToSend = null;
+            messageInput.innerHTML = "";
+            return;
+        }
+        
+        const message = messageInput.innerHTML.trim();
+        if (message === "") return;
+        socket.emit("chat-message", {
+            roomKey,
+            username,
+            message: {
+                type: 'text',
+                content: message
+            }
+        });
+        messageInput.innerHTML = "";
+    };
+
+    fileInput.onchange = () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        sendFile(file);
         fileInput.value = "";
     };
 
@@ -458,11 +514,38 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.innerHTML = emoji;
             btn.className = "m-1 text-2xl";
             btn.onclick = () => {
-                messageInput.value += emoji;
+                messageInput.innerHTML += emoji;
             };
             mediaPicker.appendChild(btn);
         });
     }
+
+    function openPreview(src, type) {
+        previewModal.style.display = "flex";
+        if (type.startsWith('image') || type === 'gif') {
+            previewContent.innerHTML = `<img src="${src}">`;
+        } else if (type.startsWith('video')) {
+            previewContent.innerHTML = `<video src="${src}" controls autoplay></video>`;
+        }
+    }
+
+    closePreview.onclick = () => {
+        previewModal.style.display = "none";
+        previewContent.innerHTML = "";
+    };
+
+    messagesDiv.addEventListener('click', (e) => {
+        if (e.target.classList.contains('message-file-preview')) {
+            let type;
+            if (e.target.tagName === 'IMG') {
+                type = e.target.src.endsWith('.gif') ? 'gif' : 'image/png';
+            } else if (e.target.tagName === 'VIDEO') {
+                type = 'video/mp4';
+            }
+            openPreview(e.target.src, type);
+        }
+    });
+
 
     // Socket.io Handlers
     socket.on("room-created", (data) => {

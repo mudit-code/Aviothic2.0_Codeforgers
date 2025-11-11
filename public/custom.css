@@ -1,20 +1,114 @@
 html, body {
   height: 100%;
-  overflow: hidden; /* Prevent scrolling on the body */
+  overflow: hidden;
+}
+
+body.chat-active {
+  overflow: hidden;
+}
+
+#chatScreen {
+    display: flex;
+    flex-direction: column; /* Changed to column */
+    height: 100vh; /* Full viewport height */
+}
+
+#chat-main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+}
+
+#chat-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+#chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+#messages {
+    flex-grow: 1; /* Allow messages to take up available space */
+    padding: 1rem;
+    overflow-y: auto; /* Ensure messages are scrollable */
+}
+
+#chat-input-container {
+    position: sticky;
+    bottom: 0;
 }
 
 .short-text {
   display: none;
 }
 
-@media (max-width: 768px) {
-  body {
-    background-color: #1a1a2e;
-    overflow-y: auto;
-  }
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+}
 
+.pasted-image-preview {
+  max-width: 100px;
+  max-height: 100px;
+  border-radius: 8px;
+  margin: 5px;
+  border: 1px solid #888 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.message-file-preview {
+    cursor: pointer;
+    max-width: 200px;
+    border-radius: 8px;
+    border: 1px solid #888 !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+#previewModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 50;
+    align-items: center;
+    justify-content: center;
+}
+
+#closePreview {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+#previewContent {
+    max-width: 90%;
+    max-height: 90%;
+}
+
+#previewContent img, #previewContent video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+
+@media (max-width: 768px) {
   #joinScreen {
     padding: 0.5rem;
+    height: auto; /* Allow join screen to grow */
+    flex-direction: column;
   }
 
   #joinScreen h1 {
@@ -34,46 +128,24 @@ html, body {
   }
 
   #chatScreen {
-    flex-direction: column;
-    height: 100%; /* Use percentage instead of vh */
-    max-width: 100%;
-    border-radius: 0;
-    background-color: #1a1a2e;
+    flex-direction: column; /* Stack chat main and user list on small screens */
   }
 
   #chatScreen .w-1\/3 {
-    display: none;
-  }
-  
-  #chat-main {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
-  }
-
-  #messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 1rem;
-    background-color: #1a1a2e;
+    display: none; /* Hide user list on small screens */
   }
 
   #chat-input-container {
-    width: 100%;
-    border-radius: 0;
-    margin: 0;
-    flex-shrink: 0;
+    padding: 1rem; /* Add padding for mobile */
   }
 
-  /* Restore GIF button and resize input controls for small screens */
   #chat-input-container .flex > button, 
   #chat-input-container .flex > form > label {
     padding: 0.5rem; /* p-2 */
   }
 
   #emojiBtn, 
-  label[for="fileInput"] {
+  label[for=\"fileInput\"] {
     font-size: 1.25rem; /* text-xl */
   }
 
