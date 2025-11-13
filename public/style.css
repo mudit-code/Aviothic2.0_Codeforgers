@@ -1,7 +1,57 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+.focus-beige:focus {
+  outline: none;
+  --tw-ring-color: #F5F5DC;
+  box-shadow: 0 0 0 2px var(--tw-ring-color);
+}
 
-.btn-approve {
-    @apply bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded;
+.sent-message {
+    background-image: linear-gradient(to right, #A0522D, #5C2E00);
+    color: white;
+}
+
+#sendBtn {
+    background-image: linear-gradient(to right, #A0522D, #5C2E00);
+}
+
+#createRoomBtn {
+    background-image: linear-gradient(to right, #A0522D, #5C2E00);
+}
+
+#joinRoomBtn {
+    background-color: white;
+    color: black;
+}
+
+.sent-message-media {
+    background-image: linear-gradient(to right, #A0522D, #5C2E00);
+}
+
+.received-message {
+    background-image: linear-gradient(to right, #F5F5DC, #D2B48C);
+    color: #333;
+}
+
+#approveJoinBtn {
+    background-image: linear-gradient(to right, #F5F5DC, #D2B48C);
+    color: #333;
+}
+
+#denyJoinBtn {
+    background-image: linear-gradient(to right, #A0522D, #5C2E00);
+    color: white;
+}
+
+@media (max-width: 768px) {
+    body.keyboard-open #chatScreen {
+        transform: translateY(-60%);
+        padding-bottom: 20px; 
+    }
+
+    body.keyboard-open #message-input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+    }
 }

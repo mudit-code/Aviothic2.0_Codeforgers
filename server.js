@@ -84,6 +84,28 @@ io.on("connection", (socket) => {
     }
   });
   
+  socket.on('rejoin-room', ({ roomKey, username }) => {
+    const room = rooms[roomKey];
+    if (room) {
+        const user = room.users.find(u => u.username === username);
+        if (user) {
+            user.id = socket.id; // Update socket ID
+            socket.join(roomKey);
+            socket.emit('join-approved', { 
+                messages: room.messages, 
+                files: room.files
+            });
+            updateUserList(roomKey);
+        } else {
+            // If user is not in the room, treat as a normal join
+            socket.emit('join-room', { roomKey, username });
+        }
+    } else {
+        // If room does not exist, clear session
+        socket.emit('room-not-found');
+    }
+});
+
   socket.on("approve-join", ({ roomKey, userId }) => {
     const room = rooms[roomKey];
     if (!room || room.admin.id !== socket.id) return;

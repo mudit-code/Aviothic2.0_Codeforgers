@@ -54,33 +54,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayMessage(user, message) {
-        const div = document.createElement("div");
-        div.className = "message mb-4 flex";
-        const messageBubble = document.createElement("div");
-        messageBubble.className = "p-3 rounded-lg max-w-xs";
+    const div = document.createElement("div");
+    const messageBubble = document.createElement("div");
+    
+    const bubbleClass = user === username ? 'sent-message' : 'received-message';
+    const alignmentClass = user === username ? 'justify-end' : 'justify-start';
 
-        if (user === username) {
-            div.classList.add("justify-end");
-            messageBubble.classList.add("bg-blue-500", "text-white");
-        } else {
-            div.classList.add("justify-start");
-            messageBubble.classList.add("bg-gray-700");
-        }
+    div.className = `message mb-4 flex ${alignmentClass}`;
+    messageBubble.className = `p-3 rounded-lg max-w-xs ${bubbleClass}`;
 
-        if (message.type === 'text') {
-            messageBubble.innerHTML = `<span class="font-bold">${user}:</span> ${message.content}`;
-        } else if (message.type === 'gif') {
-            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><img src="${message.content}" class="mt-2 rounded-lg message-file-preview">`;
-        } else if (message.type === 'image') {
-            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><img src="${message.content}" class="mt-2 rounded-lg message-file-preview">`;
-        } else if (message.type === 'video') {
-            messageBubble.innerHTML = `<span class="font-bold">${user}:</span><video src="${message.content}" class="mt-2 rounded-lg message-file-preview" controls></video>`;
-        }
+    const displayName = user === username ? "You" : user;
 
-        div.appendChild(messageBubble);
-        messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    if (message.type === 'text') {
+        messageBubble.innerHTML = `<span class="font-bold">${displayName}:</span> ${message.content}`;
+    } else if (message.type === 'gif') {
+        messageBubble.innerHTML = `<span class="font-bold">${displayName}:</span><img src="${message.content}" class="mt-2 rounded-lg message-file-preview">`;
+    } else if (message.type === 'image') {
+        messageBubble.innerHTML = `<span class="font-bold">${displayName}:</span><img src="${message.content}" class="mt-2 rounded-lg message-file-preview">`;
+    } else if (message.type === 'video') {
+        messageBubble.innerHTML = `<span class="font-bold">${displayName}:</span><video src="${message.content}" class="mt-2 rounded-lg message-file-preview" controls></video>`;
     }
+
+    div.appendChild(messageBubble);
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
     function formatBytes(bytes, decimals = 2) {
         if (bytes === 0) return '0 Bytes';
@@ -160,7 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function displayFile(user, file, messageId) {
         const messageDiv = document.getElementById(messageId);
-        const bubbleClass = user === username ? 'bg-blue-500 text-white' : 'bg-gray-700';
+        const bubbleClass = user === username ? 'sent-message' : 'received-message';
+        const alignmentClass = user === username ? 'justify-end' : 'justify-start';
+
         const fileType = getMimeType(file);
 
         let fileHtml;
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const div = document.createElement("div");
             div.id = messageId;
-            div.className = `message mb-4 flex ${user === username ? 'justify-end' : 'justify-start'}`;
+            div.className = `message mb-4 flex ${alignmentClass}`;
             div.innerHTML = `<div class="p-3 rounded-lg max-w-xs ${bubbleClass}" style="width: ${fileType.startsWith('image') || fileType.startsWith('video') ? 'auto' : '320px'};">${fileHtml}</div>`;
             messagesDiv.appendChild(div);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.id = messageId;
 
         const messageBubble = document.createElement("div");
-        messageBubble.className = "p-3 rounded-lg max-w-xs bg-blue-500 text-white";
+        messageBubble.className = "p-3 rounded-lg max-w-xs sent-message-media text-white";
         messageBubble.style.width = '320px';
 
         const truncatedName = file.name.length > 15 ? file.name.substring(0, 10) + "..." + file.name.substring(file.name.length - 5) : file.name;
@@ -315,6 +315,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         xhr.send(formData);
+    }
+    
+    function saveSession() {
+        sessionStorage.setItem("roomKey", roomKey);
+        sessionStorage.setItem("username", username);
+        sessionStorage.setItem("isAdmin", isAdmin);
+    }
+
+    function restoreSession() {
+        const savedRoomKey = sessionStorage.getItem("roomKey");
+        const savedUsername = sessionStorage.getItem("username");
+        const savedIsAdmin = sessionStorage.getItem("isAdmin");
+
+        if (savedRoomKey && savedUsername) {
+            roomKey = savedRoomKey;
+            username = savedUsername;
+            isAdmin = savedIsAdmin === 'true';
+
+            socket.emit("rejoin-room", { roomKey, username });
+        }
     }
 
     // Event Listeners
@@ -546,11 +566,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function handleKeyboard() {
+        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        if (isMobile) {
+            messageInput.addEventListener('focus', () => {
+                document.body.classList.add('keyboard-open');
+            });
+            messageInput.addEventListener('blur', () => {
+                document.body.classList.remove('keyboard-open');
+            });
+        }
+    }
+
+    handleKeyboard();
+
+    restoreSession();
 
     // Socket.io Handlers
     socket.on("room-created", (data) => {
         isAdmin = data.isAdmin;
         if (isAdmin) killRoomBtn.classList.remove("hidden");
+        saveSession();
         showChatScreen();
         displaySystemMessage("You created the room and are now the admin.");
     });
@@ -559,6 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
         messagesDiv.innerHTML = "";
         data.messages.forEach(msg => displayMessage(msg.username, msg.message));
         data.files.forEach(file => displayFile(file.username, file.file, file.messageId));
+        saveSession();
         showChatScreen();
         displaySystemMessage("Your request was approved. Welcome to the room!");
     });
@@ -566,6 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on("promoted-to-admin", () => {
         isAdmin = true;
         killRoomBtn.classList.remove("hidden");
+        saveSession();
         displaySystemMessage("The previous admin left. You are the new admin!");
     });
 

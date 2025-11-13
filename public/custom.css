@@ -1,6 +1,10 @@
+body {
+  background-color: #1a202c !important;
+}
+
 html, body {
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
 }
 
 body.chat-active {
@@ -167,4 +171,14 @@ body.chat-active {
   #killRoomBtn .short-text, #leaveBtn .short-text {
     display: inline;
   }
+}
+
+#messageInput {
+  background-image: linear-gradient(to right, #F5F5DC, #D2B48C);
+  color: black !important;
+}
+
+.message .bg-blue-500 {
+  background-image: linear-gradient(to right, #F5F5DC, #D2B48C) !important;
+  color: black !important;
 }
