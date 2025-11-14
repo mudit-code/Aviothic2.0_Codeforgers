@@ -66,7 +66,7 @@
               <label for="fileInput" title="Share a file" class="p-3 text-2xl text-gray-400 hover:text-white transition rounded-full cursor-pointer"><i class="fas fa-paperclip"></i></label>
               <input type="file" id="fileInput" class="hidden">
             </form>
-            <div id="messageInput" contenteditable="true" data-placeholder="Type a message..." class="flex-1 p-3 rounded-full bg-gray-700 text-white focus:outline-none focus-beige" style="min-height: 48px; max-height: 150px; overflow-y: auto;"></div>
+            <div id="messageInput" contenteditable="true" data-placeholder="Type a message..." class="flex-1 p-3 rounded-full bg-gray-700 text-white focus:outline-none focus-beige" style="min-height: 48px; max-height: 150px; overflow-y: auto;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
             <button id="sendBtn" title="Send message" class="p-3 bg-blue-600 rounded-full hover:bg-blue-700 transition-transform transform hover:scale-105"><i class="fas fa-paper-plane"></i></button>
           </div>
           <div class="w-full bg-gray-700 rounded-full mt-3 mb-2 hidden" id="progress-container">

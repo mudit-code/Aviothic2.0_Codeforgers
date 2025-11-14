@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileUploads = {};
     let emojis = [];
     let fileToSend = null;
+    let lastMessageUser = null;
 
     // Functions
     function showChatScreen() {
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.innerText = message;
         messagesDiv.appendChild(div);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        lastMessageUser = null;
     }
 
     function displayMessage(user, message) {
@@ -369,6 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
         roomKeyInput.value = "";
         isAdmin = false;
         document.body.classList.remove("chat-active");
+        lastMessageUser = null;
     };
 
     killRoomBtn.onclick = () => {
@@ -593,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on("join-approved", (data) => {
         messagesDiv.innerHTML = "";
+        lastMessageUser = null;
         data.messages.forEach(msg => displayMessage(msg.username, msg.message));
         data.files.forEach(file => displayFile(file.username, file.file, file.messageId));
         saveSession();
@@ -643,6 +647,8 @@ document.addEventListener('DOMContentLoaded', () => {
         messages,
         files
     }) => {
+        messagesDiv.innerHTML = "";
+        lastMessageUser = null;
         messages.forEach((msg) => displayMessage(msg.username, msg.message));
         files.forEach((file) => displayFile(file.username, file.file, file.messageId));
     });
